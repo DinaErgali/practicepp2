@@ -1,7 +1,5 @@
-# The continue Statement
-i = 0
-while i < 6:
-  i += 1
-  if i == 3:
+fruits = ["apple", "banana", "cherry"]
+for x in fruits:
+  if x == "banana":
     continue
-  print(i)
+  print(x)
