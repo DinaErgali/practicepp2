@@ -1,0 +1,6 @@
+print(10 > 9)   # True (10 greater than 9)
+print(10 == 9)  # False (10 equal to 9)
+print(10 < 9)   # False (10 less than 9)
+print(10 >= 9)  # True (10 greater than or equal to 9)
+print(10 != 9)  # True (10 not equal to 9)
+print(10 <= 9)  # False (10 less than or equal to 9)
