@@ -1,49 +1,69 @@
 import re
 import json
 
-def normalize_price(price_str):
-    return float(price_str.replace(" ", "").replace(",", "."))
 
-with open(r"C:\Negr\PP2\PP2-Tasks\Practice5\raw.txt", "r", encoding="utf-8") as f:
-    text = f.read()
+def clean_money(value: str) -> float:
+    """
+    Converts money string like '1 234,56' to float 1234.56
+    """
+    return float(value.replace(" ", "").replace(",", "."))
 
-#1. Extract all prices
-price_pattern = r"\d[\d ]*,\d{2}"
-all_prices_raw = re.findall(price_pattern, text)
-all_prices = [normalize_price(p) for p in all_prices_raw]
 
-#2. Find all product names
-product_pattern = r"\d+\.\n(.+)"
-product_names = re.findall(product_pattern, text)
+def parse_receipt(file_path: str) -> dict:
+    with open(file_path, "r", encoding="utf-8") as f:
+        text = f.read()
 
-#3. Calculate total amount
-item_total_pattern = r"x [\d ]+,\d{2}\n([\d ]+,\d{2})"
-item_totals_raw = re.findall(item_total_pattern, text)
-item_totals = [normalize_price(t) for t in item_totals_raw]
+    # 1 Extract all prices
+    price_pattern = r'[\d\s]+,\d+'
+    all_prices = [clean_money(p) for p in re.findall(price_pattern, text)]
 
-calculated_total = sum(item_totals)
+    # 2 Extract products (name, quantity, unit price)
+    product_pattern = r'\d+\.\s*\n(.+?)\n(\d+,\d+)\s*x\s*([\d\s]+,\d+)'
+    matches = re.findall(product_pattern, text, re.DOTALL)
 
-#4. Extract date and time
-datetime_pattern = r"Время:\s(\d{2}\.\d{2}\.\d{4})\s(\d{2}:\d{2}:\d{2})"
-datetime_match = re.search(datetime_pattern, text)
+    products = []
+    calculated_total = 0.0
 
-date = datetime_match.group(1) if datetime_match else None
-time = datetime_match.group(2) if datetime_match else None
+    for name, quantity, price in matches:
+        name = name.strip().replace("\n", " ")
+        qty = float(quantity.replace(",", "."))
+        price_per_unit = clean_money(price)
+        total_price = round(qty * price_per_unit, 2)
 
-#5. Find payment method
-payment_pattern = r"(Банковская карта|Наличные)"
-payment_match = re.search(payment_pattern, text)
+        calculated_total += total_price
 
-payment_method = payment_match.group(1) if payment_match else None
+        products.append({
+            "name": name,
+            "quantity": qty,
+            "price_per_unit": price_per_unit,
+            "total_price": total_price
+        })
 
-#6. Structured output (JSON)
-result = {
-    "product_names": product_names,
-    "all_prices": all_prices,
-    "calculated_total": calculated_total,
-    "date": date,
-    "time": time,
-    "payment_method": payment_method
-}
+    calculated_total = round(calculated_total, 2)
 
-print(json.dumps(result, ensure_ascii=False, indent=4))
+    # 3 Extract receipt total
+    total_match = re.search(r'ИТОГО:\s*\n?([\d\s]+,\d+)', text)
+    receipt_total = clean_money(total_match.group(1)) if total_match else None
+
+    # 4 Extract date and time
+    datetime_match = re.search(r'\d{2}\.\d{2}\.\d{4}\s+\d{2}:\d{2}:\d{2}', text)
+    datetime_value = datetime_match.group() if datetime_match else None
+
+    # 5 Extract payment method
+    payment_match = re.search(r'(Банковская карта|Наличные)', text)
+    payment_method = payment_match.group() if payment_match else None
+
+    # 6 Structured output
+    return {
+        "products": products,
+        "all_prices": all_prices,
+        "calculated_total": calculated_total,
+        "receipt_total": receipt_total,
+        "datetime": datetime_value,
+        "payment_method": payment_method
+    }
+
+
+if __name__ == "__main__":
+    result = parse_receipt("raw.txt")
+    print(json.dumps(result, indent=4, ensure_ascii=False))
