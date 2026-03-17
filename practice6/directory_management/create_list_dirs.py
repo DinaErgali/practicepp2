@@ -10,4 +10,4 @@ os.makedirs("parent/child")
 print(os.listdir("."))
 
 # 4. Check if directory exists
-print(os.path.exists("new_folder"))
+print(os.path.exists("new_folder")) 
