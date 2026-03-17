@@ -15,3 +15,4 @@ print(list(zip(a, b)))
 # 4. zip loop
 for num, char in zip(a, b):
     print(num, char)
+ 
