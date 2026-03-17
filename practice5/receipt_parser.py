@@ -66,4 +66,8 @@ def parse_receipt(file_path: str) -> dict:
 
 if __name__ == "__main__":
     result = parse_receipt("raw.txt")
+<<<<<<< HEAD
     print(json.dumps(result, indent=4, ensure_ascii=False))
+=======
+    print(json.dumps(result, indent=4, ensure_ascii=False))
+>>>>>>> 75cf0fd4f104c236a667c6c2ec4f375d7246b73b
