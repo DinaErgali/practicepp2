@@ -6,7 +6,7 @@ print(list(map(lambda x: x**2, nums)))
 
 # 2. filter: even numbers
 nums = [1, 2, 3, 4]
-print(list(filter(lambda x: x % 2 == 0, nums)))
+print(list(filter(lambda x: x % 2 == 0, nums))) 
 
 # 3. reduce: sum
 nums = [1, 2, 3, 4]
