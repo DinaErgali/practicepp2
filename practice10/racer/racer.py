@@ -1,132 +1,119 @@
 import pygame
 import random
+import sys
 
 pygame.init()
 
-# --- Window settings ---
-WIDTH, HEIGHT = 400, 600
+# -----------------------
+# Window settings
+# -----------------------
+WIDTH = 400
+HEIGHT = 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Racer")
+
 clock = pygame.time.Clock()
-font = pygame.font.SysFont("Arial", 24, bold=True)
+font = pygame.font.SysFont("Arial", 24)
 
-# --- Colors ---
-WHITE  = (255, 255, 255)
-BLACK  = (0, 0, 0)
-GRAY   = (60, 60, 60)
-RED    = (220, 50, 50)
-BLUE   = (50, 130, 220)
-YELLOW = (255, 210, 0)
+# -----------------------
+# Colors
+# -----------------------
+WHITE = (255,255,255)
+BLACK = (0,0,0)
+RED = (200,0,0)
+YELLOW = (255,215,0)
 
-# --- Player car (x, y, width, height) ---
-player = pygame.Rect(175, 500, 50, 80)
+# -----------------------
+# Player settings
+# -----------------------
+player_w = 50
+player_h = 80
+player_x = WIDTH//2
+player_y = HEIGHT - 100
 player_speed = 5
 
-# --- Lists for enemy cars and coins ---
-enemies = []
-coins   = []
-
-# --- Counters ---
-score      = 0
-coin_count = 0
-stripe_y   = 0   # Vertical offset for road stripe animation
-
-def spawn_enemy():
-    """Spawn an enemy car in a random lane (one of three positions)."""
-    x = random.choice([80, 175, 270])
-    return pygame.Rect(x, -80, 50, 80)
-
-def spawn_coin():
-    """Spawn a coin in a random lane."""
-    x = random.choice([80, 175, 270]) + 15
-    return pygame.Rect(x, -20, 20, 20)
-
-enemy_timer = 0
-coin_timer  = 0
+# -----------------------
+# Enemy
+# -----------------------
+enemy_w = 50
+enemy_h = 80
+enemy_x = random.randint(0, WIDTH-enemy_w)
+enemy_y = -100
 enemy_speed = 5
 
-running = True
-while running:
-    clock.tick(60)
-    score += 1
-    enemy_speed = 5 + score // 500   # Gradually increase speed over time
+# -----------------------
+# Coin
+# -----------------------
+coin_size = 20
+coin_x = random.randint(0, WIDTH-coin_size)
+coin_y = -200
+coin_speed = 4
+
+coins = 0
+
+# -----------------------
+# Game loop
+# -----------------------
+while True:
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            running = False
+            pygame.quit()
+            sys.exit()
 
-    # --- Move player left/right with arrow keys ---
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT]  and player.left  > 65:
-        player.x -= player_speed
-    if keys[pygame.K_RIGHT] and player.right < 340:
-        player.x += player_speed
 
-    # --- Spawn enemy cars on a random interval ---
-    enemy_timer += 1
-    if enemy_timer > random.randint(60, 90):
-        enemies.append(spawn_enemy())
-        enemy_timer = 0
+    # Move player
+    if keys[pygame.K_LEFT]:
+        player_x -= player_speed
 
-    # --- Spawn coins on a random interval ---
-    coin_timer += 1
-    if coin_timer > random.randint(80, 130):
-        coins.append(spawn_coin())
-        coin_timer = 0
+    if keys[pygame.K_RIGHT]:
+        player_x += player_speed
 
-    # --- Move all enemies and coins downward ---
-    for e in enemies:
-        e.y += enemy_speed
-    for c in coins:
-        c.y += enemy_speed
+    # Keep inside screen
+    player_x = max(0, min(WIDTH-player_w, player_x))
 
-    # --- Collision with enemy car → game over ---
-    for e in enemies:
-        if player.colliderect(e):
-            running = False
+    # Move enemy
+    enemy_y += enemy_speed
 
-    # --- Collision with coin → collect it ---
-    for c in list(coins):
-        if player.colliderect(c):
-            coin_count += 1
-            coins.remove(c)
+    if enemy_y > HEIGHT:
+        enemy_y = -100
+        enemy_x = random.randint(0, WIDTH-enemy_w)
 
-    # --- Remove objects that have gone off screen ---
-    enemies = [e for e in enemies if e.y < HEIGHT]
-    coins   = [c for c in coins   if c.y < HEIGHT]
+    # Move coin
+    coin_y += coin_speed
 
-    # --- Scroll road stripes downward to create movement illusion ---
-    stripe_y = (stripe_y + enemy_speed) % 60
+    if coin_y > HEIGHT:
+        coin_y = -100
+        coin_x = random.randint(0, WIDTH-coin_size)
 
-    # --- Draw everything ---
-    screen.fill(BLACK)
-    pygame.draw.rect(screen, GRAY,  (60, 0, 280, HEIGHT))  # Road surface
-    pygame.draw.rect(screen, WHITE, (55, 0, 5, HEIGHT))    # Left road border
-    pygame.draw.rect(screen, WHITE, (340, 0, 5, HEIGHT))   # Right road border
+    # Collision player & enemy
+    player_rect = pygame.Rect(player_x, player_y, player_w, player_h)
+    enemy_rect = pygame.Rect(enemy_x, enemy_y, enemy_w, enemy_h)
 
-    # Dashed center line
-    for y in range(-60 + stripe_y, HEIGHT, 60):
-        pygame.draw.rect(screen, WHITE, (193, y, 6, 35))
+    if player_rect.colliderect(enemy_rect):
+        pygame.quit()
+        sys.exit()
 
-    for e in enemies:
-        pygame.draw.rect(screen, RED,  e, border_radius=5)        # Enemy cars
-    for c in coins:
-        pygame.draw.circle(screen, YELLOW, c.center, 10)          # Coins
-    pygame.draw.rect(screen, BLUE, player, border_radius=5)       # Player car
+    # Collision player & coin
+    coin_rect = pygame.Rect(coin_x, coin_y, coin_size, coin_size)
 
-    # Score on the top-left
-    screen.blit(font.render(f"Score: {score}", True, WHITE), (10, 10))
-    # Coin count on the top-right
-    ct = font.render(f"Coins: {coin_count}", True, YELLOW)
-    screen.blit(ct, (WIDTH - ct.get_width() - 10, 10))
+    if player_rect.colliderect(coin_rect):
+        coins += 1
+        coin_y = -100
+        coin_x = random.randint(0, WIDTH-coin_size)
+
+    # Draw
+    screen.fill(WHITE)
+
+    pygame.draw.rect(screen, RED, player_rect)
+    pygame.draw.rect(screen, BLACK, enemy_rect)
+    pygame.draw.circle(screen, YELLOW, (coin_x, coin_y), 10)
+
+    # Show coins counter (top right)
+    text = font.render(f"Coins: {coins}", True, BLACK)
+    screen.blit(text, (WIDTH-130, 10))
 
     pygame.display.flip()
+    clock.tick(60)
 
-# --- Game over screen ---
-screen.fill(BLACK)
-screen.blit(font.render("GAME OVER", True, RED),                 (125, 260))
-screen.blit(font.render(f"Score: {score}", True, WHITE),         (130, 300))
-screen.blit(font.render(f"Coins: {coin_count}", True, YELLOW),   (130, 335))
-pygame.display.flip()
-pygame.time.wait(3000)
-pygame.quit()
