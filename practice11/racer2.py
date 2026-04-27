@@ -1,170 +1,126 @@
 import pygame
 import random
+import sys
 
 pygame.init()
 
-# --- Window settings ---
-WIDTH, HEIGHT = 400, 600
+# -----------------------
+# Window
+# -----------------------
+WIDTH = 400
+HEIGHT = 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Racer - Practice 11")
+pygame.display.set_caption("Racer")
+
 clock = pygame.time.Clock()
-font  = pygame.font.SysFont("Arial", 22, bold=True)
-small = pygame.font.SysFont("Arial", 16)
+font = pygame.font.SysFont("Arial", 24)
 
-# --- Colors ---
-WHITE  = (255, 255, 255)
-BLACK  = (0,   0,   0)
-GRAY   = (60,  60,  60)
-RED    = (220, 50,  50)
-BLUE   = (50,  130, 220)
-YELLOW = (255, 210, 0)
-ORANGE = (255, 140, 0)
-CYAN   = (0,   220, 220)
+# -----------------------
+# Colors
+# -----------------------
+WHITE = (255,255,255)
+BLACK = (0,0,0)
+RED = (200,0,0)
+YELLOW = (255,215,0)
+GREEN = (0,200,0)
 
-# --- Coin types with different weights (point values), colors, sizes, and spawn chances ---
-# chance: out of 100, controls how often each type appears
-COIN_TYPES = [
-    {"weight": 1, "color": YELLOW, "radius": 10, "chance": 60},  # Common coin
-    {"weight": 3, "color": ORANGE, "radius": 13, "chance": 30},  # Medium coin
-    {"weight": 5, "color": CYAN,   "radius": 16, "chance": 10},  # Rare coin
-]
-
-# Enemy speed increases every time the player accumulates this many coin points
-SPEED_UP_EVERY = 5
-
-# --- Player car ---
-player       = pygame.Rect(175, 500, 50, 80)
+# -----------------------
+# Player
+# -----------------------
+player = pygame.Rect(180, 500, 50, 80)
 player_speed = 5
 
-# --- Object lists ---
-enemies = []
-coins   = []
-
-# --- Game state ---
-score       = 0
-coin_count  = 0      # Total coin points collected (used to trigger speed boosts)
+# -----------------------
+# Enemy
+# -----------------------
+enemy = pygame.Rect(random.randint(0,350), -100, 50, 80)
 enemy_speed = 5
-stripe_y    = 0      # Vertical offset for road stripe animation
 
-def spawn_enemy():
-    """Spawn an enemy car in a random lane."""
-    x = random.choice([80, 175, 270])
-    return pygame.Rect(x, -80, 50, 80)
+# -----------------------
+# Coin (with weights)
+# -----------------------
+coin = pygame.Rect(random.randint(0,380), -200, 20, 20)
 
-def spawn_coin():
-    """Spawn a coin with a type chosen by weighted random chance."""
-    # Roll a number 1-100 and pick the coin type whose cumulative chance covers it
-    roll  = random.randint(1, 100)
-    total = 0
-    chosen = COIN_TYPES[0]
-    for ct in COIN_TYPES:
-        total += ct["chance"]
-        if roll <= total:
-            chosen = ct
-            break
-    x = random.choice([80, 175, 270]) + 15
-    return {"rect": pygame.Rect(x - chosen["radius"], -20, chosen["radius"]*2, chosen["radius"]*2),
-            "type": chosen}
+coin_value = 1      # weight of coin
+coin_color = YELLOW
 
-enemy_timer = 0
-coin_timer  = 0
+coins = 0
 
-running = True
-while running:
-    clock.tick(60)
-    score += 1
+# function to generate random coin
+def new_coin():
+    global coin_value, coin_color
+
+    coin.x = random.randint(0,380)
+    coin.y = -100
+
+    # random weight
+    coin_value = random.choice([1,2,3])
+
+    if coin_value == 1:
+        coin_color = YELLOW
+    elif coin_value == 2:
+        coin_color = GREEN
+    else:
+        coin_color = RED
+
+
+while True:
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            running = False
+            pygame.quit()
+            sys.exit()
 
-    # --- Player movement ---
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT]  and player.left  > 65:  player.x -= player_speed
-    if keys[pygame.K_RIGHT] and player.right < 340:  player.x += player_speed
 
-    # --- Spawn enemy cars on a random interval ---
-    enemy_timer += 1
-    if enemy_timer > random.randint(60, 90):
-        enemies.append(spawn_enemy())
-        enemy_timer = 0
+    # player movement
+    if keys[pygame.K_LEFT]:
+        player.x -= player_speed
 
-    # --- Spawn coins on a random interval ---
-    coin_timer += 1
-    if coin_timer > random.randint(80, 130):
-        coins.append(spawn_coin())
-        coin_timer = 0
+    if keys[pygame.K_RIGHT]:
+        player.x += player_speed
 
-    # --- Move all objects downward ---
-    for e in enemies:
-        e.y += enemy_speed
-    for c in coins:
-        c["rect"].y += enemy_speed
+    # keep inside
+    player.x = max(0, min(WIDTH-50, player.x))
 
-    # --- Collision with enemy → game over ---
-    for e in enemies:
-        if player.colliderect(e):
-            running = False
+    # move enemy
+    enemy.y += enemy_speed
 
-    # --- Collision with coin → collect, add weight value, check for speed boost ---
-    for c in list(coins):
-        if player.colliderect(c["rect"]):
-            w = c["type"]["weight"]
-            coin_count += w   # Add the coin's weight value to the total
+    if enemy.y > HEIGHT:
+        enemy.y = -100
+        enemy.x = random.randint(0,350)
 
-            # Check if coin_count crossed a SPEED_UP_EVERY threshold
-            prev = (coin_count - w) // SPEED_UP_EVERY
-            curr =  coin_count      // SPEED_UP_EVERY
-            if curr > prev:
-                enemy_speed = min(enemy_speed + 1, 15)  # Cap speed at 15
+    # move coin
+    coin.y += 4
 
-            coins.remove(c)
+    if coin.y > HEIGHT:
+        new_coin()
 
-    # --- Remove off-screen objects ---
-    enemies = [e for e in enemies if e.y < HEIGHT]
-    coins   = [c for c in coins   if c["rect"].y < HEIGHT]
+    # collision player enemy
+    if player.colliderect(enemy):
+        pygame.quit()
+        sys.exit()
 
-    # --- Animate road stripes scrolling downward ---
-    stripe_y = (stripe_y + enemy_speed) % 60
+    # collision player coin
+    if player.colliderect(coin):
 
-    # --- Draw everything ---
-    screen.fill(BLACK)
-    pygame.draw.rect(screen, GRAY,  (60, 0, 280, HEIGHT))   # Road surface
-    pygame.draw.rect(screen, WHITE, (55, 0, 5, HEIGHT))     # Left border
-    pygame.draw.rect(screen, WHITE, (340, 0, 5, HEIGHT))    # Right border
-    for y in range(-60 + stripe_y, HEIGHT, 60):
-        pygame.draw.rect(screen, WHITE, (193, y, 6, 35))    # Dashed center line
+        coins += coin_value
+        new_coin()
 
-    for e in enemies:
-        pygame.draw.rect(screen, RED, e, border_radius=5)   # Enemy cars
+        # increase speed every 5 coins
+        if coins % 5 == 0:
+            enemy_speed += 1
 
-    # Draw coins with their respective color and size; show point value on top
-    for c in coins:
-        ct = c["type"]
-        cx = c["rect"].centerx
-        cy = c["rect"].centery
-        pygame.draw.circle(screen, ct["color"], (cx, cy), ct["radius"])
-        lbl = small.render(str(ct["weight"]), True, BLACK)   # Point label
-        screen.blit(lbl, lbl.get_rect(center=(cx, cy)))
+    # draw
+    screen.fill(WHITE)
 
-    pygame.draw.rect(screen, BLUE, player, border_radius=5)  # Player car
+    pygame.draw.rect(screen, RED, player)
+    pygame.draw.rect(screen, BLACK, enemy)
+    pygame.draw.circle(screen, coin_color, coin.center, 10)
 
-    # HUD: score top-left, coin total top-right, speed info below
-    screen.blit(font.render(f"Score: {score}", True, WHITE), (10, 10))
-    ct_text = font.render(f"Coins: {coin_count}", True, YELLOW)
-    screen.blit(ct_text, (WIDTH - ct_text.get_width() - 10, 10))
-    spd_text = small.render(
-        f"Speed: {enemy_speed}  (next boost in: {SPEED_UP_EVERY - coin_count % SPEED_UP_EVERY})",
-        True, ORANGE)
-    screen.blit(spd_text, (10, 38))
+    # show coins
+    text = font.render(f"Coins: {coins}", True, BLACK)
+    screen.blit(text, (250,10))
 
     pygame.display.flip()
-
-# --- Game over screen ---
-screen.fill(BLACK)
-screen.blit(font.render("GAME OVER", True, RED),               (125, 260))
-screen.blit(font.render(f"Score: {score}", True, WHITE),       (130, 300))
-screen.blit(font.render(f"Coins: {coin_count}", True, YELLOW), (130, 335))
-pygame.display.flip()
-pygame.time.wait(3000)
-pygame.quit()
+    clock.tick(60)
